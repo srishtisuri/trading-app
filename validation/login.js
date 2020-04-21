@@ -18,6 +18,6 @@ module.exports = (data) => {
 
   return {
     errors,
-    isValid: isEmpty(errors),
+    isValid: Object.keys(errors).length == 0 ? true : false,
   };
 };

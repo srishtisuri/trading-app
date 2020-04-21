@@ -4,8 +4,9 @@ const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
-const db = process.env.ATLAS_URI;
+const db = require("./config/keys").mongoURI;
 const PORT = process.env.PORT || 5000;
+const passport = require("passport");
 
 //Setup database connection
 mongoose
@@ -25,6 +26,9 @@ app.use(cors());
 app.use(express.json());
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: false }));
+
+app.use(passport.initialize());
+// require("./config/passport")(passport);
 
 //Routes
 const users = require("./routes/userRoutes");

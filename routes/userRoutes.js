@@ -5,6 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/user");
 const validateRegistration = require("../validation/register");
 const validateLogin = require("../validation/login");
+const keys = require("../config/keys");
 
 router.get("/", (req, res) => {
   User.find()
@@ -17,12 +18,14 @@ router.post("/register", (req, res) => {
 
   //Validate entries
   if (!isValid) {
-    return res.json({ errors });
+    return res.status(400).json(errors);
   }
 
-  User.findOne({ email: req.body.email }).then((data) => {
+  User.findOne({
+    $or: [{ email: req.body.email }, { username: req.body.username }],
+  }).then((data) => {
     if (data) {
-      res.json({ success: false, user: data });
+      res.status(400).json({ error: "email or username already exists" });
     } else {
       const newUser = new User({
         name: req.body.name,
@@ -33,7 +36,6 @@ router.post("/register", (req, res) => {
 
       bcrypt.genSalt(10, (err, salt) => {
         bcrypt.hash(newUser.password, salt, (err, hash) => {
-          if (err) throw err;
           newUser.password = hash;
           newUser
             .save()
@@ -42,6 +44,44 @@ router.post("/register", (req, res) => {
         });
       });
     }
+  });
+});
+
+router.post("/login", (req, res) => {
+  const { errors, isValid } = validateLogin(req.body);
+
+  if (!isValid) {
+    return res.status(400).json({ errors });
+  }
+
+  User.findOne({ username: req.body.username }).then((user) => {
+    if (!user) {
+      return res.status(400).json({ userNotFound: "Username doesn't exist" });
+    }
+
+    bcrypt.compare(req.body.password, user.password).then((isMatch) => {
+      if (isMatch) {
+        const payload = {
+          id: user.id,
+          name: user.name,
+        };
+        jwt.sign(
+          payload,
+          keys.secretOrKey,
+          { expiresIn: 31556926 },
+          (err, token) => {
+            res.json({
+              success: true,
+              token: "Bearer " + token,
+            });
+          }
+        );
+      } else {
+        return res
+          .status(400)
+          .json({ passwordIncorrect: "Password incorrect" });
+      }
+    });
   });
 });
 
